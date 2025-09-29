@@ -16,6 +16,7 @@ loadSprite("door", "https://kaboomjs.com/sprites/door.png");
 
 // --- Define Custom Components ---
 // By defining patrol() here, it's globally available and can be used by any scene.
+
 function patrol() {
     return {
         id: "patrol",
@@ -112,6 +113,7 @@ scene("main", ({ level } = { level: 0 }) => {
         pos(100, 100),
         area({ scale: 0.7 }),
         body(),
+        timer(),
         "player",
     ]);
 
@@ -133,8 +135,11 @@ scene("main", ({ level } = { level: 0 }) => {
             destroy(enemy);
             player.jump(300);
         } else {
-            destroy(player);
-            go("lose");
+            let i = 0
+            while i < 5 {
+            player.opacity=0.5;
+            player.wait(0.5)
+            };
         }
     });
 
