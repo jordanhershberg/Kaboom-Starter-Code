@@ -9,25 +9,58 @@ kaboom({
 setGravity(800);
 
 // --- Load Assets ---
-// For Day 1, we only need the player's sprite.
-loadSprite("apple", "https://kaboomjs.com/sprites/apple.png");
-//Enemy Sprite
-loadSprite("enemy","https://kaboomjs.com/sprites/gigagantrum.png");
+loadSprite("dino", "https://kaboomjs.com/sprites/dino.png");
+loadSprite("enemy", "https://kaboomjs.com/sprites/gigagantrum.png");
+loadSprite("coin", "https://kaboomjs.com/sprites/coin.png");
+loadSprite("door", "https://kaboomjs.com/sprites/door.png");
+
+// --- Define Custom Components ---
+// By defining patrol() here, it's globally available and can be used by any scene.
+function patrol() {
+    return {
+        id: "patrol",
+        require: [ "pos", "area" ],
+        dir: -1,
+        add() {
+            this.onCollide((obj, col) => {
+                if (col.isLeft() || col.isRight()) {
+                    this.dir = -this.dir;
+                }
+            });
+        },
+        update() {
+            this.move(60 * this.dir, 0);
+        },
+    };
+}
 
 
 // --- Main Game Scene ---
-scene("main", () => {
+scene("main", ({ level } = { level: 0 }) => {
 
-    // --- The Level Design ---
-    const levelLayout = [
-        "                    ",
-        "                    ",
-        "    =         =     ",
-        "                    ",
-        "  =       =      =  ",
-        "                    ",
-        "====================",
+    // Array of all level layouts
+    const LEVELS = [
+        [
+            "   $    $    $     ",
+            "                    ",
+            "    =         =   D ",
+            "                    ",
+            "  =    ^  =      =  ",
+            " $           $      ",
+            "====================",
+        ],
+        [
+            " $                  ",
+            " =                  ",
+            "      =      =      ",
+            "                    ",
+            "     ^           ^  ",
+            "      =      =    D ",
+            "====================",
+        ]
     ];
+
+    const currentLevel = level;
 
     // Configure what each symbol in the level layout means.
     const levelConf = {
@@ -40,89 +73,91 @@ scene("main", () => {
                 color(0, 200, 0),
                 area(),
                 body({ isStatic: true }),
+                "platform",
+            ],
+            "$": () => [
+                sprite("coin"),
+                area(),
+                "coin",
+            ],
+            "D": () => [
+                sprite("door"),
+                area(),
+                "door",
+            ],
+            // This now correctly uses the globally-defined patrol() function.
+            "^": () => [
+                sprite("enemy"),
+                area(),
+                body(),
+                patrol(),
+                "enemy",
             ],
         }
     };
 
-    addLevel(levelLayout, levelConf);
+    addLevel(LEVELS[currentLevel], levelConf);
+
+    // --- Score & UI ---
+    let score= 0;
+    const scoreLabel =add([
+        text("Score:" + score),
+        pos(24,24),
+        fixed(),
+    ])
 
     // --- The Player Character ---
     const player = add([
-        sprite("apple"),
+        sprite("dino"),
         pos(100, 100),
         area({ scale: 0.7 }),
         body(),
         "player",
     ]);
 
-//The Enemy Patrol
-    function patrol(){
-        return{
-            id:"patrol",
-            require: ["pos","area"],
-            dir: -1,
-            update(){
-                this.move(60 * this.dir, 0);    
-            },
-            //This next even will flip direction if the enemy collides with something
-            add(){
-                this.onCollide((Object, col) =>{
-                    if (col.isLeft() || col.isRight()){
-                        this.dir = -this.dir;
-                    }
-                 });
-                },
-            };
-        }
-
-    // Add enemy to the scene
-    const enemy = add([
-        sprite("enemy"),
-        pos(600,200), //Start position for the enemy
-        area(),
-        body(),
-        patrol(), //Use the patrol function we just defined
-        "enemy"
-    ]);
-
-
-
     // --- Player Controls & Interactions ---
-    onKeyDown("left", () => {
-        player.move(-200, 0);
+    onKeyDown("left", () => { player.move(-200, 0); });
+    onKeyDown("right", () => { player.move(200, 0); });
+    onKeyPress("space", () => { if (player.isGrounded()) { player.jump(650); } });
+
+    //--Coin Collecting Logic--
+    player.onCollide("coin", (coin) =>{
+        destroy(coin);
+        score+= 10;
+        scoreLabel.text = "Score: " + score;
+
     });
 
-    onKeyDown("right", () => {
-        player.move(200, 0);
-    });
-
-    onKeyPress("space", () => {
-        if (player.isGrounded()) {
-            player.jump(650);
-        }
-    });
-
-        //Collision Detection
-    player.onCollide("enemy",(enemy,col) =>{
-        if (col.isBottom()){
+    player.onCollide("enemy", (enemy, col) => {
+        if (col.isBottom()) {
             destroy(enemy);
             player.jump(300);
-        }
-        else {
+        } else {
             destroy(player);
-            go("lose")
+            go("lose");
         }
     });
 
+    player.onCollide("door", () => {
+        if (currentLevel + 1 < LEVELS.length) {
+            go("main", { level: currentLevel + 1 });
+        } else {
+            go("win");
+        }
+    });
 });
 
-//--Game Over Scene
+
+// --- Lose Scene ---
 scene("lose", () => {
-    add([
-        text("Game Over"),
-        pos(center()),
-        anchor("center"),
-    ]);
+    add([ text("Game Over"), pos(center()), anchor("center") ]);
+    wait(2, () => { go("main", { level: 0 }); });
+});
+
+// --- Win Scene ---
+scene("win", () => {
+    add([ text("You Win!"), pos(center()), anchor("center") ]);
+    wait(2, () => { go("main", { level: 0 }); });
 });
 
 
