@@ -1,7 +1,7 @@
 // Initialize the Kaboom context.
 kaboom({
-    width: 800,
-    height: 600,
+    width: 1100,
+    height: 750,
     background: [0, 100, 200],
 });
 
@@ -11,7 +11,7 @@ setGravity(800);
 // --- Load Assets ---
 loadSprite("dino", "https://kaboomjs.com/sprites/dino.png");
 loadSprite("enemy", "https://kaboomjs.com/sprites/gigagantrum.png");
-loadSprite("coin", "https://kaboomjs.com/sprites/coin.png");
+loadSprite("egg", "https://kaboomjs.com/sprites/egg.png");
 loadSprite("door", "https://kaboomjs.com/sprites/door.png");
 
 // --- Define Custom Components ---
@@ -21,7 +21,7 @@ function patrol() {
     return {
         id: "patrol",
         require: [ "pos", "area" ],
-        dir: -1,
+        dir: 1,
         add() {
             this.onCollide((obj, col) => {
                 if (col.isLeft() || col.isRight()) {
@@ -42,22 +42,22 @@ scene("main", ({ level } = { level: 0 }) => {
     // Array of all level layouts
     const LEVELS = [
         [
-            "   $    $    $     ",
-            "                    ",
-            "    =         =   D ",
-            "                    ",
-            "  =    ^  =      =  ",
-            " $           $      ",
-            "====================",
+            "   $           ^  D    ",
+            "             $  =======",
+            "     ==                ",
+            " =       $  ==         ",
+            "      ^        $       ",
+            " $                     ",
+            "=======================",
         ],
         [
-            " $                  ",
-            " =                  ",
-            "      =      =      ",
-            "                    ",
-            "     ^           ^  ",
-            "      =      =    D ",
-            "====================",
+            " $                     ",
+            " =              =      ",
+            "      ==    ========   ",
+            "      =  ^^^   =       ",
+            "      =$$$$$$$$=       ",
+            "      =$$$$$$$$=  D    ",
+            "====================   ",
         ]
     ];
 
@@ -77,9 +77,9 @@ scene("main", ({ level } = { level: 0 }) => {
                 "platform",
             ],
             "$": () => [
-                sprite("coin"),
+                sprite("egg"),
                 area(),
-                "coin",
+                "egg",
             ],
             "D": () => [
                 sprite("door"),
@@ -102,7 +102,7 @@ scene("main", ({ level } = { level: 0 }) => {
     // --- Score & UI ---
     let score= 0;
     const scoreLabel =add([
-        text("Score:" + score),
+        text("egg SCORE:" + score),
         pos(24,24),
         fixed(),
     ])
@@ -122,11 +122,11 @@ scene("main", ({ level } = { level: 0 }) => {
     onKeyDown("right", () => { player.move(200, 0); });
     onKeyPress("space", () => { if (player.isGrounded()) { player.jump(650); } });
 
-    //--Coin Collecting Logic--
-    player.onCollide("coin", (coin) =>{
-        destroy(coin);
-        score+= 10;
-        scoreLabel.text = "Score: " + score;
+    //--egg Collecting Logic--
+    player.onCollide("egg", (egg) =>{
+        destroy(egg);
+        score+= 1000;
+        scoreLabel.text = "egg SCORE: " + score;
 
     });
 
@@ -135,22 +135,25 @@ scene("main", ({ level } = { level: 0 }) => {
             destroy(enemy);
             player.jump(300);
         } else {
-            let i = 0
-            while i < 5 {
-            player.opacity=0.5;
-            player.wait(0.5)
-            };
+            player.opacity = 0.5;
+            wait(1, () => {
+                player.onCollide("enemy", (enemy, col) => {
+                if (col.isLeft() || col.isRight()) {
+                go("lose");
+                }
+                });
+            });
         }
-    });
-
+    });  
     player.onCollide("door", () => {
-        if (currentLevel + 1 < LEVELS.length) {
-            go("main", { level: currentLevel + 1 });
-        } else {
-            go("win");
-        }
-    });
+    if (currentLevel + 1 < LEVELS.length) {
+        go("main", { level: currentLevel + 1 });
+    } else {
+        go("win");
+    }   
 });
+});
+
 
 
 // --- Lose Scene ---
@@ -168,5 +171,3 @@ scene("win", () => {
 
 // Start the game
 go("main");
-
-
